@@ -1,17 +1,31 @@
+#![allow(unused_imports)]
+
 mod parse;
 
+#[macro_use]
+extern crate error_chain;
 #[macro_use]
 extern crate nom;
 extern crate serde;
 
-use std::str::from_utf8;
+mod errors {
+    error_chain! {
+        foreign_links {
+            Str(::std::str::Utf8Error);
+        }
+        errors {
+            IsNegative
+            Incomplete
+        }
+    }
+}
 
 //use serde::{Serializer, Deserializer};
+use errors::*;
 use serde::Deserialize;
-use parse::parse_string;
+use parse::parse_buffer;
 use nom::IResult::{Done, Incomplete};
 
-pub type Result<T> = std::result::Result<T, ()>;
 pub struct Deserializer<'de> {
     input: &'de [u8],
 }
@@ -39,30 +53,26 @@ impl<'de> Deserializer<'de> {
                 self.input = &rest;
                 Ok(result == 1)
             }
-            Incomplete(_) => Err(()),
-            nom::IResult::Error(_) => Err(()),
+            Incomplete(_) => Err(ErrorKind::Incomplete.into()),
+            nom::IResult::Error(e) => bail!(e.description())
         }
     }
 
     fn parse_buffer(&mut self) -> Result<&'de [u8]> {
-        match nom::be_i32(self.input) {
-            Done(rest, length) => {
-                self.input = &rest[length as usize..];
-                Ok(&rest[..length as usize])
-            },
-            Incomplete(_) => Err(()),
-            nom::IResult::Error(_) => Err(())
+        match parse::parse_buffer(self.input) {
+            Done(rest, data) => {
+                self.input = &rest;
+                Ok(data)
+            }
+            Incomplete(_) => Err(ErrorKind::Incomplete.into()),
+            nom::IResult::Error(e) => bail!(e.description())
         }
     }
 
     fn parse_string(&mut self) -> Result<&'de str> {
-        if let Ok(bytes) = self.parse_buffer() {
-            match std::str::from_utf8(bytes) {
-                Ok(s) => Ok(s),
-                Err(_) => Err(()),
-            }
-        } else {
-            Err(())
+        match self.parse_buffer() {
+            Ok(bytes) => Ok(std::str::from_utf8(bytes)?),
+            Err(e) => Err(Error::with_chain(e, "UTF-8 decode failed"))
         }
     }
 }
@@ -86,11 +96,20 @@ mod tests {
     }
 
     #[test]
+    fn parse_string_too_little_data() {
+        let mut thing = Deserializer {
+            input: b"\x00\x00\x00\x04as",
+        };
+        let e = thing.parse_string();
+        assert_eq!(e.is_err(), true);
+    }
+
+    #[test]
     fn parse_buffer_works() {
         let mut thing = Deserializer {
             input: b"\x00\x00\x00\x04\x01\x02\x03\x04",
         };
-        assert_eq!(thing.parse_buffer().unwrap(), [1,2,3,4]);
+        assert_eq!(thing.parse_buffer().unwrap(), [1, 2, 3, 4]);
     }
 
     #[test]

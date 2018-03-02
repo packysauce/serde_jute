@@ -5,5 +5,5 @@ authors = ["Patrick White <patrick@patrickwhite.org>"]
 
 [dependencies]
 serde = "*"
-error = "*"
+error-chain = "*"
 nom = "*"
