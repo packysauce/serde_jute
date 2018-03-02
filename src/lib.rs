@@ -75,6 +75,28 @@ impl<'de> Deserializer<'de> {
             Err(e) => Err(Error::with_chain(e, "UTF-8 decode failed"))
         }
     }
+
+    fn parse_long(&mut self) -> Result<i64> {
+        match nom::be_i64(self.input) {
+            Done(rest, data) => {
+                self.input = &rest;
+                Ok(data)
+            },
+            Incomplete(_) => Err(ErrorKind::Incomplete.into()),
+            nom::IResult::Error(e) => bail!(e.description())
+        }
+    }
+
+    fn parse_int(&mut self) -> Result<i32> {
+        match nom::be_i32(self.input) {
+            Done(rest, data) => {
+                self.input = &rest;
+                Ok(data)
+            },
+            Incomplete(_) => Err(ErrorKind::Incomplete.into()),
+            nom::IResult::Error(e) => bail!(e.description())
+        }
+    }
 }
 
 #[cfg(test)]
@@ -115,10 +137,12 @@ mod tests {
     #[test]
     fn parse_multiple_works() {
         let mut thing = Deserializer {
-            input: b"\x00\x00\x00\x00\x0ai love you\x01",
+            input: b"\x00\x00\x00\x00\x0ai love you\x01\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x01",
         };
         assert_eq!(thing.parse_bool().unwrap(), false);
         assert_eq!(thing.parse_string().unwrap(), String::from("i love you"));
         assert_eq!(thing.parse_bool().unwrap(), true);
+        assert_eq!(thing.parse_long().unwrap(), 1);
+        assert_eq!(thing.parse_int().unwrap(), 1)
     }
 }
