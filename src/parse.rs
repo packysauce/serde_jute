@@ -8,7 +8,6 @@ use nom::be_i32;
  * It remains to be seen
  */
 
-
 named!(pub parse_string<&[u8], String>,
   do_parse!(
     len: be_i32 >>
@@ -24,21 +23,29 @@ named!(pub parse_bool<&[u8], bool>,
   )
 );
 
+named!(pub parse_buffer<&[u8], &[u8]>,
+  do_parse!(
+    len: be_i32 >>
+    data: take!(len) >>
+    (data)
+  )
+);
+
 #[cfg(test)]
 mod tests {
-  use super::*;
+    use super::*;
 
-  #[test]
-  fn basic_string_parses() {
-    let a = b"\x00\x00\x00\x04asdf";
-    assert_eq!(parse_string(a).to_result().unwrap(), String::from("asdf"));
-  }
+    #[test]
+    fn basic_string_parses() {
+        let a = b"\x00\x00\x00\x04asdf";
+        assert_eq!(parse_string(a).to_result().unwrap(), String::from("asdf"));
+    }
 
-  #[test]
-  fn simple_bool_parses() {
-    let a = b"\x00";
-    let b = b"\x01";
-    assert_eq!(parse_bool(a).to_result().unwrap(), false);
-    assert_eq!(parse_bool(b).to_result().unwrap(), true);
-  }
+    #[test]
+    fn simple_bool_parses() {
+        let a = b"\x00";
+        let b = b"\x01";
+        assert_eq!(parse_bool(a).to_result().unwrap(), false);
+        assert_eq!(parse_bool(b).to_result().unwrap(), true);
+    }
 }
