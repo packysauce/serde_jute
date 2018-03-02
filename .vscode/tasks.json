@@ -16,6 +16,12 @@
       "group": {
         "kind": "build",
         "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
       }
     },
     {
@@ -31,6 +37,12 @@
       "group": {
         "kind": "test",
         "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
       }
     }
   ]
