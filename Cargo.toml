@@ -1,0 +1,9 @@
+[package]
+name = "serde_jute"
+version = "0.1.0"
+authors = ["Patrick White <patrick@patrickwhite.org>"]
+
+[dependencies]
+serde = "*"
+error = "*"
+nom = "*"
