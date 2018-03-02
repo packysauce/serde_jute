@@ -4,6 +4,8 @@ mod parse;
 extern crate nom;
 extern crate serde;
 
+use std::str::from_utf8;
+
 //use serde::{Serializer, Deserializer};
 use serde::Deserialize;
 use parse::parse_string;
@@ -42,14 +44,25 @@ impl<'de> Deserializer<'de> {
         }
     }
 
-    fn parse_string(&mut self) -> Result<String> {
+    fn parse_buffer(&mut self) -> Result<&'de [u8]> {
         match nom::be_i32(self.input) {
             Done(rest, length) => {
                 self.input = &rest[length as usize..];
-                Ok(String::from_utf8_lossy(&rest[..length as usize]).to_string())
-            }
+                Ok(&rest[..length as usize])
+            },
             Incomplete(_) => Err(()),
-            nom::IResult::Error(_) => Err(()),
+            nom::IResult::Error(_) => Err(())
+        }
+    }
+
+    fn parse_string(&mut self) -> Result<&'de str> {
+        if let Ok(bytes) = self.parse_buffer() {
+            match std::str::from_utf8(bytes) {
+                Ok(s) => Ok(s),
+                Err(_) => Err(()),
+            }
+        } else {
+            Err(())
         }
     }
 }
@@ -70,6 +83,14 @@ mod tests {
             input: b"\x00\x00\x00\x04asdf",
         };
         assert_eq!(thing.parse_string().unwrap(), String::from("asdf"));
+    }
+
+    #[test]
+    fn parse_buffer_works() {
+        let mut thing = Deserializer {
+            input: b"\x00\x00\x00\x04\x01\x02\x03\x04",
+        };
+        assert_eq!(thing.parse_buffer().unwrap(), [1,2,3,4]);
     }
 
     #[test]
